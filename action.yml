@@ -1,0 +1,12 @@
+name: "latexmk-action"
+description: "Compile TeX files & Generate PDF file."
+inputs:
+  ROOTFILE:
+    description: "Root file for LaTeX."
+    required: true
+    default: "main.tex"
+    
+runs:
+  using: "docker"
+  image: "Dockerfile"
+
