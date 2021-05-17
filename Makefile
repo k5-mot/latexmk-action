@@ -16,8 +16,6 @@ CODEFILES := $(wildcard $(CODEDIR)/*.*)
 FIGFILES  := $(wildcard $(FIGDIR)/*.*)
 ALLFILES  := $(TEXFILES) $(BIBFILES) $(CODEFILES) $(FIGFILES)
 
-EXCLUDES  := .git .vscode build release
-
 ##
 ## Tools
 ##
@@ -77,4 +75,3 @@ define HELP_TXT
 
 
 endef
-
