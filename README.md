@@ -80,8 +80,8 @@ jobs:
           draft: false
           prerelease: false
 
-      - name: 'Upload Release Asset'
-        id: upload_release_asset
+      - name: 'Upload Release.pdf'
+        id: upload_release_pdf
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -92,7 +92,7 @@ jobs:
           asset_content_type: application/pdf
           
       - name: 'Upload Release.tar.gz'
-        id: upload_release_tar
+        id: upload_release_targz
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -112,6 +112,7 @@ jobs:
           asset_path: ./release/release.zip
           asset_name: ${{ steps.info_action.outputs.release }}.zip
           asset_content_type: application/zip
+
 ```
 
 ## References
