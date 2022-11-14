@@ -1,77 +1,127 @@
 #!/usr/bin/make -f
 
-##
-## Default variables
-##
-ROOTNAME  := main
-ROOTTEX   := $(ROOTNAME).tex
-ROOTPDF   := build/$(ROOTNAME).pdf
-SRCDIR    := src
-BIBDIR    := bib
-CODEDIR   := code
-FIGDIR    := figure
-TEXFILES  := $(ROOTTEX) $(wildcard $(SRCDIR)/*.tex)
-BIBFILES  := $(wildcard $(BIBDIR)/*.bib)
-CODEFILES := $(wildcard $(CODEDIR)/*.*)
-FIGFILES  := $(wildcard $(FIGDIR)/*.*)
-ALLFILES  := $(TEXFILES) $(BIBFILES) $(CODEFILES) $(FIGFILES)
+## Target
+TARGET         := main
 
-##
+## Directories
+STYLE_DIR      := style
+SOURCE_DIR     := tex
+IMAGE_DIR      := image
+BUILD_DIR      := build
+
+## Source files
+STYLE_FILES   := $(wildcard $(STYLE_DIR)/*.cls) \
+                 $(wildcard $(STYLE_DIR)/*.sty) \
+                 $(wildcard $(STYLE_DIR)/*.bst)
+TEX_FILES     := $(wildcard $(SOURCE_DIR)/*.tex) $(TARGET).tex
+BIB_FILES     := $(wildcard $(SOURCE_DIR)/*.bib)
+SVG_FILES     := $(wildcard $(IMAGE_DIR)/*.svg)
+CONVERT_FILES := $(addprefix $(IMAGE_DIR)/,$(notdir $(SVG_FILES:%.svg=%.pdf)))
+IMAGE_FILES   := $(wildcard $(IMAGE_DIR)/*.png) \
+                 $(wildcard $(IMAGE_DIR)/*.pdf) \
+                 $(wildcard $(IMAGE_DIR)/*.eps) \
+                 $(wildcard $(IMAGE_DIR)/*.jpg) \
+                 $(wildcard $(IMAGE_DIR)/*.jpeg) \
+                 $(CONVERT_FILES)
+
+.SUFFIXES:
+.SUFFIXES: .pdf .ps .dvi .bbl .aux .png .eps .jpg .jpeg .tex .bib .cls .sty .bst .svg
+
 ## Tools
-##
-LATEXMK   := latexmk
-PDFVIEWER := evince
-MKDIR     := mkdir -p
-RM        := rm -rf
-CP        := cp -rf
-#PDFVIEWER = acroread
+LATEX         := platex -file-line-error --shell-escape -halt-on-error -interaction=batchmode -output-directory=$(BUILD_DIR)
+BIBTEX        := pbibtex -terse
+MAKEINDEX     := mendex
+DVIPDF        := dvipdfmx -o $(BUILD_DIR)/$(TARGET).pdf
+DVIPS         := dvips -q -o $(BUILD_DIR)/$(TARGET).ps
+PDF_VIEWER    := okular
+PS_VIEWER     := okular
+RM            := rm -rf
+MKDIR         := mkdir -p
+CAT           := cat
+PREVIEW_MODE  := pdf # ps
 
-##
 ## Commands
-##
-default: help         ## View help for Makefile.
+.PHONY: all
+all: rebuild clean ## Exec "make rebuild clean"
 
-all:     view         ## View a PDF file.
+.PHONY: build
+build: $(BUILD_DIR)/$(TARGET).pdf $(BUILD_DIR)/$(TARGET).ps  ## Create an output file
 
-view:    build        ## View a PDF file.
-	$(PDFVIEWER) $(ROOTPDF) &
+.PHONY: rebuild
+rebuild: distclean build ## Exec "make distclean build"
 
-build:   $(ROOTPDF)   ## Generate a PDF file from TeX files.
+.PHONY: debug
+debug: rebuild ## Print debug messages after building
+	$(CAT) $(BUILD_DIR)/$(TARGET).blg
+	$(CAT) $(BUILD_DIR)/$(TARGET).log
 
-clean:                ## Remove generated files.
-	$(LATEXMK) -C
-	$(RM) build
-
-rebuild: clean build  ## Regenerate a PDF file.
-
-help:                 ## View help for Makefile.
-	@printf "$$HELP_TXT"
-	@printf "\033[36m%-20s\033[0m %s\n" "[Command]" "[Description]"
-	@grep -E '^[a-zA-Z_-]+:.*?##.*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m %-20s\033[0m %s\n", $$1, $$2}'
-
-$(ROOTPDF): $(ALLFILES)
-	$(LATEXMK)
+.PHONY: preview
+preview: build ## Preview an output file
+ifeq ("$(PREVIEW_MODE)", "ps")
+	$(PDF_VIEWER) $(BUILD_DIR)/$(TARGET).ps &
+else
+	$(PS_VIEWER) $(BUILD_DIR)/$(TARGET).pdf &
+endif
 
 .PHONY: clean
+clean:  ## Remove intermediate files
+	$(RM) $(BUILD_DIR)/*.aux $(BUILD_DIR)/*.lof $(BUILD_DIR)/*.log \
+		  $(BUILD_DIR)/*.lot $(BUILD_DIR)/*.fls $(BUILD_DIR)/*.out \
+		  $(BUILD_DIR)/*.toc $(BUILD_DIR)/*.fmt $(BUILD_DIR)/*.fot \
+		  $(BUILD_DIR)/*.cb  $(BUILD_DIR)/*.cb2 $(BUILD_DIR)/*.lb  \
+		  $(BUILD_DIR)/*.dvi $(BUILD_DIR)/*.xdv $(BUILD_DIR)/*-converted-to.* \
+		  $(BUILD_DIR)/*.bbl $(BUILD_DIR)/*.bcf $(BUILD_DIR)/*.blg \
+		  $(BUILD_DIR)/*-blx.aux $(BUILD_DIR)/*-blx.bib $(BUILD_DIR)/*.run.xml \
+		  $(BUILD_DIR)/*.fdb_latexmk $(BUILD_DIR)/*.synctex \
+		  $(BUILD_DIR)/*.synctex.gz $(BUILD_DIR)/*.pdfsync \
+		  $(BUILD_DIR)/*.idx $(BUILD_DIR)/*.ilg $(BUILD_DIR)/*.ind
 
-.DEFAULT_GOAL := help
+.PHONY: distclean
+distclean: clean ## Remove intermediate and output files
+	$(RM) $(BUILD_DIR)/*.pdf $(BUILD_DIR)/*.ps $(CONVERT_FILES)
 
-##
+.PHONY: help
+help:  ## Print help (this message)
+	@printf "$$LOGO"
+	@printf "\033[36m%-16s\033[0m %s\n" "[Command]" "[Description]"
+	@grep -E '^[a-zA-Z_-]+:.*?##.*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-16s \033[0m%s\n", $$1, $$2}'
+
+
+## Dependency
+$(BUILD_DIR)/$(TARGET).pdf: $(BUILD_DIR)/$(TARGET).dvi
+	$(DVIPDF) $(BUILD_DIR)/$(TARGET).dvi
+
+$(BUILD_DIR)/$(TARGET).ps: $(BUILD_DIR)/$(TARGET).dvi
+	$(DVIPS)  $(BUILD_DIR)/$(TARGET).dvi > /dev/null 2>&1
+
+$(BUILD_DIR)/$(TARGET).dvi: $(BUILD_DIR)/ $(TEX_FILES) $(BIB_FILES) $(STYLE_FILES) $(IMAGE_FILES)
+ifneq ("$(BIB_FILES)", "")
+	$(LATEX) $(TARGET).tex
+	$(BIBTEX) $(BUILD_DIR)/$(TARGET).aux
+endif
+	$(LATEX) $(TARGET).tex
+	$(LATEX) $(TARGET).tex
+
+$(BUILD_DIR)/:
+	$(MKDIR) $(BUILD_DIR)
+
+# $(IMAGE_DIR)/%.pdf: $(IMAGE_DIR)/%.svg
+# 	inkscape -z -D --file="$<" --export-pdf="$@"
+
+
 ## Appendix
-##
-export HELP_TXT
-define HELP_TXT
-\033[35m \033[35m-----------------------------------------------------\033[35m
-\033[35m|\033[34m       _    _____                        _           \033[35m|
-\033[35m|\033[34m      | |  |  ___|                      | |          \033[35m|
-\033[35m|\033[34m      | | _|___ \ ______ _ __ ___   ___ | |_         \033[35m|
-\033[35m|\033[34m      | |/ /   \ \______| '_ ` _ \ / _ \| __|        \033[35m|
-\033[35m|\033[34m      |   </\__/ /      | | | | | | (_) | |_         \033[35m|
-\033[35m|\033[34m      |_|\_\____/       |_| |_| |_|\___/ \__|        \033[35m|
-\033[35m|\033[34m                                                     \033[35m|
-\033[35m|\033[37m Copyright (c) 2020-2021 k5-mot All Rights Reserved. \033[35m|
-\033[35m|\033[37m    "k5-mot/slide_template" is under MIT license.    \033[35m|
-\033[35m \033[35m-----------------------------------------------------\033[35m
+export LOGO
+define LOGO
+\033[35m┏\033[35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[35m┓
+\033[35m┃\033[34m                                 _         _          \033[35m┃
+\033[35m┃\033[34m       _ __   _   _         ___ | |  __ _ | |__       \033[35m┃
+\033[35m┃\033[34m      | '_ \ | | | | _____ / __|| | / _` || '_ \      \033[35m┃
+\033[35m┃\033[34m      | | | || |_| ||_____|\__ \| || (_| || |_) |     \033[35m┃
+\033[35m┃\033[34m      |_| |_| \__,_|       |___/|_| \__,_||_.__/      \033[35m┃
+\033[35m┃\033[34m                                                      \033[35m┃
+\033[35m┠\033[34m──────────────────────────────────────────────────────\033[35m┨
+\033[35m┃\033[31m Copyright (c) 2020-2022 nu-slab All Rights Reserved. \033[35m┃
+\033[35m┗\033[35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[35m┛
 
 
 endef

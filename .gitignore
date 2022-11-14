@@ -2,6 +2,11 @@
 # Created by https://www.toptal.com/developers/gitignore/api/latex
 # Edit at https://www.toptal.com/developers/gitignore?templates=latex
 
+### My Setting ###
+.vscode/
+build/*
+# !build/*.pdf
+
 ### LaTeX ###
 ## Core latex/pdflatex auxiliary files:
 *.aux
@@ -27,10 +32,7 @@
 # *.pdf
 
 ## Generated if empty string is given at "Please type another file name for output:"
-*.pdf
-.vscode/
-build/
-release/
+.pdf
 
 ## Bibliography auxiliary files (bibtex/biblatex/biber):
 *.bbl
